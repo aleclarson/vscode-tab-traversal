@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'
-import { jumpForward, jumpBackward } from './traversal'
+import { jumpBackward, jumpForward } from './traversal'
 
 export function activate(context: vscode.ExtensionContext) {
   const move = (getPosition: typeof jumpBackward | typeof jumpForward) => {

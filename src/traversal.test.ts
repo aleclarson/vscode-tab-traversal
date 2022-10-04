@@ -1,9 +1,9 @@
 import endent from 'endent'
 import {
   CursorPosition,
+  jumpBackward,
   jumpForward,
   TextDocument,
-  jumpBackward,
 } from './traversal'
 
 test('arrow function syntax', () => {
