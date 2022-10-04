@@ -6,6 +6,34 @@ import {
   TextDocument,
 } from '../src/traversal'
 
+test('jumpBackward from start of line', () => {
+  const text = makeTextDocument`
+    if (a) {
+      return b
+    }
+    return c
+  `
+  expect(render(text, jumpBackward, [3, 0])).toMatchInlineSnapshot(`
+    "⎕if⎕ (a⎕) {⎕
+      return⎕ b⎕
+    }
+    ⎕return c"
+  `)
+})
+
+test('jumpBackward from start of indented line', () => {
+  const text = makeTextDocument`
+    if (x) {
+      return
+    }
+  `
+  expect(render(text, jumpBackward, [1, 2])).toMatchInlineSnapshot(`
+    "⎕if⎕ (x⎕) {⎕
+      ⎕return
+    }"
+  `)
+})
+
 test('arrow function syntax', () => {
   const text = makeTextDocument`
     const foo = (bar: string) => {}

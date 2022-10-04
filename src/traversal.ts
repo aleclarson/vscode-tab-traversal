@@ -10,7 +10,6 @@ export function jumpBackward(
   cursorIndex: number
 ): CursorPosition {
   let pos: CursorPosition = [lineNumber, cursorIndex]
-  let prevPos: CursorPosition
   while (true) {
     if (cursorIndex === 0) {
       lineNumber--
@@ -19,7 +18,7 @@ export function jumpBackward(
 
     let prevPos = findPrevWord(text, lineNumber, cursorIndex)
     if (isEmptyBetween(text, prevPos, pos)) {
-      cursorIndex = prevPos[1]
+      pos = prevPos
       continue
     }
 
