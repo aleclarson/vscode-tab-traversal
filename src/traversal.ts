@@ -10,6 +10,7 @@ export function jumpBackward(
   cursorIndex: number
 ): CursorPosition {
   let pos: CursorPosition = [lineNumber, cursorIndex]
+  let prevPos: CursorPosition
   while (true) {
     if (cursorIndex === 0) {
       lineNumber--
@@ -22,14 +23,14 @@ export function jumpBackward(
       continue
     }
 
-    // To match what `jumpForward` does, we need to check if the next
-    // call to `findPrevWord` returns a position that (when compared to
-    // our first call to `findPrevWord`) has only whitespace between
-    // them.
-    pos = prevPos
-    prevPos = findPrevWord(text, prevPos[0], prevPos[1])
-    if (isEmptyBetween(text, prevPos, pos)) {
-      return prevPos
+    // Skip past any stops where whitespace between it and the stop
+    // before it is all that exists.
+    while (true) {
+      pos = prevPos
+      prevPos = findPrevWord(text, ...pos)
+      if (!isEmptyBetween(text, prevPos, pos)) {
+        break
+      }
     }
 
     return pos
@@ -38,13 +39,27 @@ export function jumpBackward(
 
 function isEmptyBetween(
   text: TextDocument,
-  [prevLine, prevIndex]: CursorPosition,
-  [line, index]: CursorPosition
+  [prevLineNumber, prevCursorIndex]: CursorPosition,
+  [lineNumber, cursorIndex]: CursorPosition
 ) {
-  if (line !== prevLine) {
+  if (prevLineNumber === lineNumber && prevCursorIndex === cursorIndex) {
+    // Invalid comparison: Same position.
     return false
   }
-  const textBetween = getLine(text, line).text.slice(prevIndex, index)
+  if (prevCursorIndex < 0) {
+    return cursorIndex === 0
+  }
+  let textBetween = ''
+  for (let i = prevLineNumber; i <= lineNumber; i++) {
+    const line = getLine(text, i).text
+    textBetween += line.slice(
+      i === prevLineNumber ? prevCursorIndex : 0,
+      i === lineNumber ? cursorIndex : undefined
+    )
+    if (i !== lineNumber) {
+      textBetween += '\n'
+    }
+  }
   return !!textBetween.length && !textBetween.trim().length
 }
 
@@ -53,10 +68,11 @@ export function jumpForward(
   lineNumber: number,
   cursorIndex: number
 ): CursorPosition {
-  if (isEndOfLine(lineNumber, cursorIndex, text)) {
-    return findNextWord(text, lineNumber + 1, 0)
-  }
   while (true) {
+    if (isEndOfLine(lineNumber, cursorIndex, text)) {
+      lineNumber++
+      cursorIndex = -1
+    }
     const nextPos = findNextWord(text, lineNumber, cursorIndex + 1)
     if (isEmptyBetween(text, [lineNumber, cursorIndex], nextPos)) {
       cursorIndex = nextPos[1]
@@ -148,7 +164,9 @@ function findPrevWord(
 
   cursorIndex -= 1
   if (cursorIndex <= 0) {
-    // stop at beginning
+    if (lineNumber > 0) {
+      return [lineNumber - 1, getLineLength(text, lineNumber - 1)]
+    }
     return [lineNumber, 0]
   }
 

@@ -54,6 +54,27 @@ test('skip same-line jump with only whitespace between', () => {
   )
 })
 
+test('skip empty lines', () => {
+  const text = makeTextDocument`
+    log(a)
+    
+    
+    log(b)
+  `
+  expect(render(text, jumpForward, [0, 0])).toMatchInlineSnapshot(`
+    "⎕log⎕(a⎕)⎕
+    
+    
+    log⎕(b⎕)⎕"
+  `)
+  expect(render(text, jumpBackward, [-1, -1])).toMatchInlineSnapshot(`
+    "⎕log⎕(a⎕)⎕
+
+
+    log⎕(b⎕)⎕"
+  `)
+})
+
 type TestDocument = TextDocument & {
   render: (positions: CursorPosition[]) => string
 }
