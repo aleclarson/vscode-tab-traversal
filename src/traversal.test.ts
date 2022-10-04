@@ -18,6 +18,18 @@ test('arrow function syntax', () => {
   )
 })
 
+test('template literal – interpolation syntax', () => {
+  const text = makeTextDocument`
+    foo(\`bar\${baz}\`)
+  `
+  expect(render(text, jumpForward, [0, 0])).toMatchInlineSnapshot(
+    '"⎮foo⎮(`bar⎮${baz⎮}`⎮)⎮"'
+  )
+  expect(render(text, jumpBackward, [-1, -1])).toMatchInlineSnapshot(
+    '"⎮foo⎮(`bar⎮${baz⎮}`⎮)⎮"'
+  )
+})
+
 type TestDocument = TextDocument & {
   render: (positions: CursorPosition[]) => string
 }
