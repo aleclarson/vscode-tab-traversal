@@ -47,6 +47,12 @@ function isBoundary(
     let prevCharacter = getCharacter(text, lineNumber, cursorIndex - 1)
     return prevCharacter !== '='
   }
+  // Stop after the closing brace of a string interpolation
+  // within a template literal.
+  if (character == '`') {
+    let prevCharacter = getCharacter(text, lineNumber, cursorIndex - 1)
+    return prevCharacter === '}'
+  }
 }
 
 function findNextWord(
