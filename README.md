@@ -22,6 +22,8 @@ Slightly intelligent text traversal with the Tab key.
 > - before a closing bracket / quote
 >
 > Empty lines are skipped.
+>
+> Navigation between snippet placeholders and tab completion take precedence over this extension.
 
 &nbsp;
 
