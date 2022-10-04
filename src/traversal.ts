@@ -29,8 +29,25 @@ export function jumpForward(
   return findNextWord(text, lineNumber, cursorIndex + 1)
 }
 
-const boundaryPattern = /[\)\]>}"']/
+const boundaryPattern = /[\)\]}]/
 const wordPattern = /^[a-z0-9]+$/i
+
+function isBoundary(
+  text: TextDocument,
+  lineNumber: number,
+  cursorIndex: number
+) {
+  let character = getCharacter(text, lineNumber, cursorIndex)
+  if (boundaryPattern.test(character)) {
+    return true
+  }
+  // Avoid stopping before the angle bracket in the symbol
+  // representing an arrow function.
+  if (character == '>') {
+    let prevCharacter = getCharacter(text, lineNumber, cursorIndex - 1)
+    return prevCharacter !== '='
+  }
+}
 
 function findNextWord(
   text: TextDocument,
@@ -50,12 +67,11 @@ function findNextWord(
   }
 
   let character = getCharacter(text, lineNumber, cursorIndex)
-
-  if (character.match(wordPattern)) {
+  if (wordPattern.test(character)) {
     return findNextWord(text, lineNumber, cursorIndex + 1, true)
   }
 
-  if (stopFlag || character.match(boundaryPattern)) {
+  if (stopFlag || isBoundary(text, lineNumber, cursorIndex)) {
     return [lineNumber, cursorIndex]
   }
 
@@ -77,12 +93,12 @@ function findPrevWord(
     return [lineNumber, cursorIndex]
   }
 
-  let character = getCharacter(text, lineNumber, cursorIndex)
-
-  if (character.match(boundaryPattern)) {
+  if (isBoundary(text, lineNumber, cursorIndex)) {
     return [lineNumber, cursorIndex]
   }
-  if (!character.match(wordPattern)) {
+
+  let character = getCharacter(text, lineNumber, cursorIndex)
+  if (!wordPattern.test(character)) {
     return findPrevWord(text, lineNumber, cursorIndex - 1, true)
   }
 

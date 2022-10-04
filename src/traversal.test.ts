@@ -11,10 +11,10 @@ test('arrow function syntax', () => {
     const foo = (bar: string) => {}
   `
   expect(render(text, jumpForward, [0, 0])).toMatchInlineSnapshot(
-    '"⎮const⎮ foo⎮ = (bar⎮: string⎮) =⎮> {⎮}⎮"'
+    '"⎮const⎮ foo⎮ = (bar⎮: string⎮) => {⎮}⎮"'
   )
   expect(render(text, jumpBackward, [-1, -1])).toMatchInlineSnapshot(
-    '"⎮const⎮ foo⎮ = (bar⎮: string⎮) =⎮> {⎮}⎮"'
+    '"⎮const⎮ foo⎮ = (bar⎮: string⎮) => {⎮}⎮"'
   )
 })
 
