@@ -42,6 +42,18 @@ test('string boundaries', () => {
   )
 })
 
+test('skip same-line jump with only whitespace between', () => {
+  const text = makeTextDocument`
+    const { a } = b
+  `
+  expect(render(text, jumpForward, [0, 0])).toMatchInlineSnapshot(
+    '"⎮const⎮ { a⎮ } = b⎮"'
+  )
+  expect(render(text, jumpBackward, [-1, -1])).toMatchInlineSnapshot(
+    '"⎮const⎮ { a⎮ } = b⎮"'
+  )
+})
+
 type TestDocument = TextDocument & {
   render: (positions: CursorPosition[]) => string
 }

@@ -9,12 +9,43 @@ export function jumpBackward(
   lineNumber: number,
   cursorIndex: number
 ): CursorPosition {
-  // nextWord is a recursive function and this is an edge case that it can't handle
-  if (cursorIndex === 0) {
-    const prevLineLength = getLineLength(text, lineNumber - 1) - 1
-    return findPrevWord(text, lineNumber - 1, prevLineLength)
+  let pos: CursorPosition = [lineNumber, cursorIndex]
+  while (true) {
+    if (cursorIndex === 0) {
+      lineNumber--
+      cursorIndex = getLineLength(text, lineNumber)
+    }
+
+    let prevPos = findPrevWord(text, lineNumber, cursorIndex)
+    if (isEmptyBetween(text, prevPos, pos)) {
+      cursorIndex = prevPos[1]
+      continue
+    }
+
+    // To match what `jumpForward` does, we need to check if the next
+    // call to `findPrevWord` returns a position that (when compared to
+    // our first call to `findPrevWord`) has only whitespace between
+    // them.
+    pos = prevPos
+    prevPos = findPrevWord(text, prevPos[0], prevPos[1])
+    if (isEmptyBetween(text, prevPos, pos)) {
+      return prevPos
+    }
+
+    return pos
   }
-  return findPrevWord(text, lineNumber, cursorIndex - 1)
+}
+
+function isEmptyBetween(
+  text: TextDocument,
+  [prevLine, prevIndex]: CursorPosition,
+  [line, index]: CursorPosition
+) {
+  if (line !== prevLine) {
+    return false
+  }
+  const textBetween = getLine(text, line).text.slice(prevIndex, index)
+  return !!textBetween.length && !textBetween.trim().length
 }
 
 export function jumpForward(
@@ -22,11 +53,17 @@ export function jumpForward(
   lineNumber: number,
   cursorIndex: number
 ): CursorPosition {
-  // nextWord is a recursive function and this is an edge case that it can't handle
   if (isEndOfLine(lineNumber, cursorIndex, text)) {
     return findNextWord(text, lineNumber + 1, 0)
   }
-  return findNextWord(text, lineNumber, cursorIndex + 1)
+  while (true) {
+    const nextPos = findNextWord(text, lineNumber, cursorIndex + 1)
+    if (isEmptyBetween(text, [lineNumber, cursorIndex], nextPos)) {
+      cursorIndex = nextPos[1]
+      continue
+    }
+    return nextPos
+  }
 }
 
 const boundaryPattern = /[\)\]}]/
@@ -41,8 +78,8 @@ function isBoundary(
   if (boundaryPattern.test(character)) {
     return true
   }
-  // Avoid stopping before the angle bracket in the symbol
-  // representing an arrow function.
+  // Avoid stopping before the angle bracket in the symbol representing
+  // an arrow function.
   if (character == '>') {
     let prevCharacter = getCharacter(text, lineNumber, cursorIndex - 1)
     return prevCharacter !== '='
@@ -109,9 +146,10 @@ function findPrevWord(
     return [0, 0]
   }
 
-  if (cursorIndex === 0) {
+  cursorIndex -= 1
+  if (cursorIndex <= 0) {
     // stop at beginning
-    return [lineNumber, cursorIndex]
+    return [lineNumber, 0]
   }
 
   if (isBoundary(text, lineNumber, cursorIndex)) {
@@ -120,14 +158,14 @@ function findPrevWord(
 
   let character = getCharacter(text, lineNumber, cursorIndex)
   if (!wordPattern.test(character)) {
-    return findPrevWord(text, lineNumber, cursorIndex - 1, true)
+    return findPrevWord(text, lineNumber, cursorIndex, true)
   }
 
   if (stopFlag) {
     return [lineNumber, cursorIndex + 1]
   }
 
-  return findPrevWord(text, lineNumber, cursorIndex - 1)
+  return findPrevWord(text, lineNumber, cursorIndex)
 }
 
 function getCharacter(
