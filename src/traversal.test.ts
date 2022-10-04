@@ -30,6 +30,18 @@ test('template literal – interpolation syntax', () => {
   )
 })
 
+test('string boundaries', () => {
+  const text = makeTextDocument`
+    const foo = ['a b ', '']
+  `
+  expect(render(text, jumpForward, [0, 0])).toMatchInlineSnapshot(
+    '"⎮const⎮ foo⎮ = [\'a⎮ b⎮ ⎮\', \'⎮\'⎮]⎮"'
+  )
+  expect(render(text, jumpBackward, [-1, -1])).toMatchInlineSnapshot(
+    '"⎮const⎮ foo⎮ = [\'a⎮ b⎮ ⎮\', \'⎮\'⎮]⎮"'
+  )
+})
+
 type TestDocument = TextDocument & {
   render: (positions: CursorPosition[]) => string
 }

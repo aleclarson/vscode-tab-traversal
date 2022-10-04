@@ -47,12 +47,27 @@ function isBoundary(
     let prevCharacter = getCharacter(text, lineNumber, cursorIndex - 1)
     return prevCharacter !== '='
   }
-  // Stop after the closing brace of a string interpolation
-  // within a template literal.
-  if (character == '`') {
-    let prevCharacter = getCharacter(text, lineNumber, cursorIndex - 1)
-    return prevCharacter === '}'
+  // Stop before a closing quote mark.
+  return (
+    /['"`]/.test(character) &&
+    hasOpeningQuote(text, lineNumber, cursorIndex, character)
+  )
+}
+
+function hasOpeningQuote(
+  text: TextDocument,
+  lineNumber: number,
+  cursorIndex: number,
+  quote: string
+) {
+  let line = getLine(text, lineNumber).text
+  let quoteCount = 0
+  for (let i = 0; i < cursorIndex; i++) {
+    if (line[i] === quote) {
+      quoteCount++
+    }
   }
+  return quoteCount % 2 === 1
 }
 
 function findNextWord(
