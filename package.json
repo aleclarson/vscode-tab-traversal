@@ -4,6 +4,11 @@
   "publisher": "aleclarson",
   "description": "Slightly intelligent text traversal with the Tab key",
   "version": "1.0.0",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aleclarson/vscode-tab-traversal.git"
+  },
   "engines": {
     "vscode": "^1.64.0"
   },
@@ -51,7 +56,7 @@
     "@vscode/test-electron": "^2.0.3",
     "endent": "^2.1.0",
     "prettier": "^2.7.1",
-    "typescript": "^4.5.4",
+    "typescript": "^4.8.4",
     "vitest": "^0.23.4"
   }
 }
