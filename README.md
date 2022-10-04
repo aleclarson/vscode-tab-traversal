@@ -15,8 +15,11 @@ Slightly intelligent text traversal with the Tab key.
 > Use the `Tab` and `Shift+Tab` shortcuts (or custom keybindings) to
 > traverse through text in a file.
 >
-> The cursor jumps to the end of the nearest word or before the nearest
-> closing bracket / quote.
+> The cursor jumps to whichever of the following is closest:
+>
+> - the end of the line
+> - the end of the nearest word
+> - before a closing bracket / quote
 
 &nbsp;
 
