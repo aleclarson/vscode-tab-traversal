@@ -60,13 +60,13 @@ function makeTextDocument(
           }
           prevCursorIndex = 0
         }
-        const line = this.lineAt(lineNumber)
+        const line = this.lineAt(lineNumber)!
         result += line.text.slice(prevCursorIndex, cursorIndex)
         result += '⎮'
       })
 
       const [lastLineNumber, lastCursorIndex] = positions.at(-1)!
-      const lastLine = this.lineAt(lastLineNumber)
+      const lastLine = this.lineAt(lastLineNumber)!
       result +=
         lastLine.text.slice(lastCursorIndex) +
         lines.slice(lastLineNumber + 1).join('\n')
@@ -86,11 +86,10 @@ function move(
   }
   if (start[1] < 0) {
     while (start[1] < 0) {
-      start[1] += text.lineAt(start[0]).text.length
+      start[1] += text.lineAt(start[0])!.text.length
     }
     start[1]++
   }
-  console.log({ start })
   const cursors: CursorPosition[] = [start]
   while (true) {
     const prevCursor = cursors.at(-1)!
@@ -99,7 +98,6 @@ function move(
       cursors.push(cursor)
     } else break
   }
-  console.log({ cursors })
   return cursors
 }
 

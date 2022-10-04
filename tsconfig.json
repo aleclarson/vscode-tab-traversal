@@ -4,7 +4,6 @@
     "target": "esnext",
     "lib": ["esnext"],
     "sourceMap": true,
-    "rootDir": "src",
     "strict": true,
     "types": ["vitest/globals"]
   }
