@@ -11,10 +11,10 @@ test('arrow function syntax', () => {
     const foo = (bar: string) => {}
   `
   expect(render(text, jumpForward, [0, 0])).toMatchInlineSnapshot(
-    '"⎮const⎮ foo⎮ = (bar⎮: string⎮) => {⎮}⎮"'
+    '"⎕const⎕ foo⎕ = (bar⎕: string⎕) => {⎕}⎕"'
   )
   expect(render(text, jumpBackward, [-1, -1])).toMatchInlineSnapshot(
-    '"⎮const⎮ foo⎮ = (bar⎮: string⎮) => {⎮}⎮"'
+    '"⎕const⎕ foo⎕ = (bar⎕: string⎕) => {⎕}⎕"'
   )
 })
 
@@ -23,10 +23,10 @@ test('template literal – interpolation syntax', () => {
     log(\`hello \${a + b}\`)
   `
   expect(render(text, jumpForward, [0, 0])).toMatchInlineSnapshot(
-    '"⎮log⎮(`hello⎮ ${a⎮ + b⎮}⎮`⎮)⎮"'
+    '"⎕log⎕(`hello⎕ ${a⎕ + b⎕}⎕`⎕)⎕"'
   )
   expect(render(text, jumpBackward, [-1, -1])).toMatchInlineSnapshot(
-    '"⎮log⎮(`hello⎮ ${a⎮ + b⎮}⎮`⎮)⎮"'
+    '"⎕log⎕(`hello⎕ ${a⎕ + b⎕}⎕`⎕)⎕"'
   )
 })
 
@@ -35,10 +35,10 @@ test('string boundaries', () => {
     const foo = ["a b ", '']
   `
   expect(render(text, jumpForward, [0, 0])).toMatchInlineSnapshot(
-    '"⎮const⎮ foo⎮ = [\\"a⎮ b⎮ \\", \'⎮\'⎮]⎮"'
+    '"⎕const⎕ foo⎕ = [\\"a⎕ b⎕ \\", \'⎕\'⎕]⎕"'
   )
   expect(render(text, jumpBackward, [-1, -1])).toMatchInlineSnapshot(
-    '"⎮const⎮ foo⎮ = [\\"a⎮ b⎮ \\", \'⎮\'⎮]⎮"'
+    '"⎕const⎕ foo⎕ = [\\"a⎕ b⎕ \\", \'⎕\'⎕]⎕"'
   )
 })
 
@@ -47,10 +47,10 @@ test('skip same-line jump with only whitespace between', () => {
     const { a } = b
   `
   expect(render(text, jumpForward, [0, 0])).toMatchInlineSnapshot(
-    '"⎮const⎮ { a⎮ } = b⎮"'
+    '"⎕const⎕ { a⎕ } = b⎕"'
   )
   expect(render(text, jumpBackward, [-1, -1])).toMatchInlineSnapshot(
-    '"⎮const⎮ { a⎮ } = b⎮"'
+    '"⎕const⎕ { a⎕ } = b⎕"'
   )
 })
 
@@ -86,7 +86,7 @@ function makeTextDocument(
         }
         const line = this.lineAt(lineNumber)!
         result += line.text.slice(prevCursorIndex, cursorIndex)
-        result += '⎮'
+        result += '⎕'
       })
 
       const [lastLineNumber, lastCursorIndex] = positions.at(-1)!
