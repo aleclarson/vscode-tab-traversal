@@ -112,9 +112,10 @@ function makeTextDocument(
 
       const [lastLineNumber, lastCursorIndex] = positions.at(-1)!
       const lastLine = this.lineAt(lastLineNumber)!
-      result +=
-        lastLine.text.slice(lastCursorIndex) +
-        lines.slice(lastLineNumber + 1).join('\n')
+      result += lastLine.text.slice(lastCursorIndex)
+      if (lastLineNumber < this.lineCount - 1) {
+        result += '\n' + lines.slice(lastLineNumber + 1).join('\n')
+      }
 
       return result
     },
