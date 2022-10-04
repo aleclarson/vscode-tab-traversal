@@ -1,6 +1,6 @@
 {
-  "include": ["**/*.test.ts"],
   "compilerOptions": {
+    "moduleResolution": "node",
     "target": "esnext",
     "lib": ["esnext"],
     "strict": true,

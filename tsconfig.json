@@ -1,5 +1,5 @@
 {
-  "exclude": ["**/*.test.ts", "*.config.ts"],
+  "exclude": ["spec", "*.config.ts"],
   "compilerOptions": {
     "module": "commonjs",
     "target": "esnext",
