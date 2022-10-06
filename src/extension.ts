@@ -5,6 +5,8 @@ import { jumpBackward, jumpForward } from './traversal'
 const lock = new Mutex()
 
 export function activate(context: vscode.ExtensionContext) {
+  const output = vscode.window.createOutputChannel('Tab Traversal')
+
   const move = (getPosition: typeof jumpBackward | typeof jumpForward) => {
     let editor = vscode.window.activeTextEditor
     if (!editor) {
@@ -22,11 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
     editor.selection = new vscode.Selection(line, column, line, column)
   }
 
-  let lastKnownTextEditor = null as vscode.TextEditor | null
-  let lastKnownLineNumber = -1
-  let lastKnownLineText = ''
-
-  const output = vscode.window.createOutputChannel('Tab Traversal')
+  let redents: Redent[] = []
 
   context.subscriptions.push(
     output,
@@ -47,56 +45,38 @@ export function activate(context: vscode.ExtensionContext) {
       }
     }),
     vscode.workspace.onDidSaveTextDocument(document => {
-      if (lastKnownTextEditor?.document === document) {
-        lastKnownTextEditor = null
-        lastKnownLineNumber = -1
-        lastKnownLineText = ''
-      }
+      redents = redents.filter(
+        reindent => reindent.textEditor.document !== document
+      )
     }),
     vscode.window.onDidChangeTextEditorSelection(async event => {
       const unlock = await lock.acquire()
       try {
         const { selections, textEditor } = event
         const lineNumber = selections[0].active.line
-
-        if (textEditor === vscode.window.activeTextEditor)
-          output.appendLine(
-            `onDidChangeTextEditorSelection: ${JSON.stringify({
-              lastKnownTextEditor: lastKnownTextEditor?.document.fileName,
-              lastKnownLineNumber,
-              textEditor: textEditor.document.fileName,
-              lineNumber,
-            })}`
-          )
+        const lastRedent = redents[redents.length - 1]
 
         if (
           textEditor === vscode.window.activeTextEditor &&
-          (lastKnownTextEditor !== textEditor ||
-            lastKnownLineNumber !== lineNumber)
+          (!lastRedent ||
+            lastRedent.textEditor !== textEditor ||
+            lastRedent.lineNumber !== lineNumber)
         ) {
-          const revertedLine =
-            lastKnownTextEditor &&
+          const reverts = redents.filter(redent =>
             replaceLineIfOnlyWhitespace(
-              lastKnownTextEditor,
-              lastKnownLineNumber,
-              lastKnownLineText
+              redent.textEditor,
+              redent.lineNumber,
+              redent.oldText
             )
-
-          if (revertedLine) {
-            output.appendLine(`Reverting line ${lastKnownLineNumber}`)
-          }
-
-          const line = await reindentLineIfAllowed(
-            textEditor,
-            lineNumber,
-            output
           )
 
-          if (line) {
-            lastKnownLineNumber = lineNumber
-            lastKnownTextEditor = textEditor
-            lastKnownLineText = line.text
+          redents.length = 0
+
+          for (const { lineNumber } of reverts) {
+            output.appendLine(`Reverting line ${lineNumber}`)
           }
+
+          await redentLineIfAllowed(textEditor, lineNumber, redents, output)
         }
       } finally {
         unlock()
@@ -109,9 +89,16 @@ export function deactivate() {
   lock.cancel()
 }
 
-async function reindentLineIfAllowed(
+type Redent = {
+  textEditor: vscode.TextEditor
+  lineNumber: number
+  oldText: string
+}
+
+async function redentLineIfAllowed(
   textEditor: vscode.TextEditor,
   lineNumber: number,
+  redents: Redent[],
   output: vscode.OutputChannel
 ) {
   const { selections } = textEditor
@@ -124,14 +111,13 @@ async function reindentLineIfAllowed(
     const line = textEditor.document.lineAt(lineNumber)
     if (line.isEmptyOrWhitespace) {
       const oldText = line.text
-
-      // If the line before this one is empty, we have to detect the
-      // indentation manually, because of this bug:
-      // https://github.com/microsoft/vscode/issues/121214
       const hasEmptyLineBefore = textEditor.document.lineAt(
         lineNumber - 1
       ).isEmptyOrWhitespace
 
+      // If the line before this one is empty, we have to detect the
+      // indentation manually, because of this bug:
+      // https://github.com/microsoft/vscode/issues/121214
       if (hasEmptyLineBefore) {
         // Find the first non-empty line before this one.
         let i = lineNumber - 1
@@ -152,25 +138,43 @@ async function reindentLineIfAllowed(
           lineNumber,
           line.text.length
         )
+
+        while (++i <= lineNumber) {
+          redents.push({
+            textEditor,
+            lineNumber: i,
+            oldText: textEditor.document.lineAt(i).text,
+          })
+        }
+      } else {
+        redents.push({
+          textEditor,
+          lineNumber,
+          oldText,
+        })
       }
 
       await vscode.commands.executeCommand(
         'editor.action.reindentselectedlines'
       )
-      if (hasEmptyLineBefore) {
-        // Restore the original selection.
-        textEditor.selection = selections[0]
-      }
       // Extract the result of "Reindent selected lines" action.
       const newText = textEditor.document.lineAt(lineNumber).text
       if (oldText !== newText) {
-        output.appendLine(`Reindenting line ${lineNumber}`)
+        output.appendLine(`Redenting line ${lineNumber}`)
         output.appendLine(`${JSON.stringify({ newText, oldText })}`)
         await vscode.commands.executeCommand('undo')
         replaceLineIfOnlyWhitespace(textEditor, lineNumber, newText)
       }
-
-      return line
+      if (hasEmptyLineBefore) {
+        // Restore cursor to the expected line, but move it to the end
+        // of the new indentation.
+        textEditor.selection = new vscode.Selection(
+          lineNumber,
+          newText.length,
+          lineNumber,
+          newText.length
+        )
+      }
     }
   }
 }
