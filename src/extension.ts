@@ -92,9 +92,11 @@ export function activate(context: vscode.ExtensionContext) {
             output
           )
 
-          lastKnownLineNumber = line ? lineNumber : -1
-          lastKnownTextEditor = line ? textEditor : null
-          lastKnownLineText = line ? line.text : ''
+          if (line) {
+            lastKnownLineNumber = lineNumber
+            lastKnownTextEditor = textEditor
+            lastKnownLineText = line.text
+          }
         }
       } finally {
         unlock()
