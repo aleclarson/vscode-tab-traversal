@@ -46,6 +46,13 @@ export function activate(context: vscode.ExtensionContext) {
         move(jumpBackward)
       }
     }),
+    vscode.workspace.onDidSaveTextDocument(document => {
+      if (lastKnownTextEditor?.document === document) {
+        lastKnownTextEditor = null
+        lastKnownLineNumber = -1
+        lastKnownLineText = ''
+      }
+    }),
     vscode.window.onDidChangeTextEditorSelection(async event => {
       const unlock = await lock.acquire()
       try {
