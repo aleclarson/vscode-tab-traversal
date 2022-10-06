@@ -10,7 +10,10 @@ let formatTimeout: NodeJS.Timeout | undefined
 export function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel('Tab Traversal')
 
-  const move = (getPosition: typeof jumpBackward | typeof jumpForward) => {
+  const move = (
+    from: vscode.Position,
+    to: typeof jumpBackward | typeof jumpForward
+  ) => {
     let editor = vscode.window.activeTextEditor
     if (!editor) {
       throw new Error('No active editor')
@@ -19,11 +22,7 @@ export function activate(context: vscode.ExtensionContext) {
     if (!text) {
       throw new Error('No active document')
     }
-    const [line, column] = getPosition(
-      text,
-      editor.selection.active.line,
-      editor.selection.active.character
-    )
+    const [line, column] = to(text, from.line, from.character)
     editor.selection = new vscode.Selection(line, column, line, column)
   }
 
@@ -36,7 +35,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (selections.length > 1) {
         vscode.commands.executeCommand('editor.action.indentLines')
       } else {
-        move(jumpForward)
+        move(selections[0].end, jumpForward)
       }
     }),
     vscode.commands.registerCommand('jumpBackward', () => {
@@ -44,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (selections.length > 1) {
         vscode.commands.executeCommand('editor.action.outdentLines')
       } else {
-        move(jumpBackward)
+        move(selections[0].start, jumpBackward)
       }
     }),
     vscode.workspace.onDidSaveTextDocument(document => {
