@@ -1,8 +1,11 @@
 import { Mutex } from 'async-mutex'
+import { readFile } from 'fs/promises'
 import * as vscode from 'vscode'
 import { jumpBackward, jumpForward } from './traversal'
 
 const lock = new Mutex()
+
+let formatTimeout: NodeJS.Timeout | undefined
 
 export function activate(context: vscode.ExtensionContext) {
   const output = vscode.window.createOutputChannel('Tab Traversal')
@@ -49,6 +52,9 @@ export function activate(context: vscode.ExtensionContext) {
         reindent => reindent.textEditor.document !== document
       )
     }),
+    vscode.window.onDidChangeActiveTextEditor(textEditor => {
+      clearTimeout(formatTimeout!)
+    }),
     vscode.window.onDidChangeTextEditorSelection(async event => {
       const unlock = await lock.acquire()
       try {
@@ -86,6 +92,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
+  clearTimeout(formatTimeout!)
   lock.cancel()
 }
 
@@ -101,6 +108,8 @@ async function redentLineIfAllowed(
   redents: Redent[],
   output: vscode.OutputChannel
 ) {
+  let changed = false
+
   const { selections } = textEditor
   if (
     lineNumber > 0 &&
@@ -159,12 +168,13 @@ async function redentLineIfAllowed(
       )
       // Extract the result of "Reindent selected lines" action.
       const newText = textEditor.document.lineAt(lineNumber).text
-      if (oldText !== newText) {
+      if ((changed = oldText !== newText)) {
         output.appendLine(`Redenting line ${lineNumber}`)
         output.appendLine(`${JSON.stringify({ newText, oldText })}`)
         await vscode.commands.executeCommand('undo')
         replaceLineIfOnlyWhitespace(textEditor, lineNumber, newText)
       }
+
       if (hasEmptyLineBefore) {
         // Restore cursor to the expected line, but move it to the end
         // of the new indentation.
@@ -175,6 +185,24 @@ async function redentLineIfAllowed(
           newText.length
         )
       }
+    }
+  }
+
+  if (!changed) {
+    const { fileName } = textEditor.document
+    if (fileName && textEditor.document.isDirty) {
+      clearTimeout(formatTimeout!)
+      formatTimeout = setTimeout(async () => {
+        output.appendLine('Formatting: ' + fileName)
+        await vscode.commands.executeCommand('editor.action.formatDocument')
+
+        // Load file from disk to get the latest version.
+        const savedText = await readFile(fileName, 'utf8')
+        if (savedText === textEditor.document.getText()) {
+          // If the file hasn't changed, save it.
+          await textEditor.document.save()
+        }
+      }, 3000)
     }
   }
 }
