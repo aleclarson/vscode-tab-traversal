@@ -34,12 +34,12 @@
       {
         "key": "tab",
         "command": "jumpForward",
-        "when": "editorTextFocus && !inSnippetMode && !inlineSuggestionVisible && !suggestWidgetVisible"
+        "when": "editorTextFocus && !(inSnippetMode && hasNextTabstop) && !(inlineSuggestionHasIndentationLessThanTabSize && inlineSuggestionVisible && !editorTabMovesFocus) && !(suggestWidgetHasFocusedSuggestion && suggestWidgetVisible && textInputFocus)"
       },
       {
         "key": "shift+tab",
         "command": "jumpBackward",
-        "when": "editorTextFocus && !inSnippetMode"
+        "when": "editorTextFocus && !(inSnippetMode && hasPrevTabstop)"
       }
     ]
   },
@@ -58,8 +58,5 @@
     "prettier": "^2.7.1",
     "typescript": "^4.8.4",
     "vitest": "^0.23.4"
-  },
-  "dependencies": {
-    "async-mutex": "^0.4.0"
   }
 }
