@@ -51,7 +51,10 @@ export function activate(context: vscode.ExtensionContext) {
         reindent => reindent.textEditor.document !== document
       )
     }),
-    vscode.window.onDidChangeActiveTextEditor(textEditor => {
+    vscode.window.onDidChangeTextEditorVisibleRanges(() => {
+      clearTimeout(formatTimeout!)
+    }),
+    vscode.window.onDidChangeActiveTextEditor(() => {
       clearTimeout(formatTimeout!)
     }),
     vscode.window.onDidChangeTextEditorSelection(async event => {
@@ -107,102 +110,122 @@ async function redentLineIfAllowed(
   redents: Redent[],
   output: vscode.OutputChannel
 ) {
-  let changed = false
+  const line = textEditor.document.lineAt(lineNumber)
+  const {
+    selections,
+    document: { fileName },
+  } = textEditor
 
-  const { selections } = textEditor
-  if (
+  const isNodeModules = fileName.includes('/node_modules/')
+  const isIndentable =
+    !isNodeModules &&
     lineNumber > 0 &&
     selections.length === 1 &&
     selections[0].isEmpty &&
-    !textEditor.document.fileName.includes('/node_modules/')
-  ) {
-    const line = textEditor.document.lineAt(lineNumber)
-    if (line.isEmptyOrWhitespace) {
-      const oldText = line.text
-      const hasEmptyLineBefore = textEditor.document.lineAt(
-        lineNumber - 1
-      ).isEmptyOrWhitespace
+    line.isEmptyOrWhitespace
 
-      // If the line before this one is empty, we have to detect the
-      // indentation manually, because of this bug:
-      // https://github.com/microsoft/vscode/issues/121214
-      if (hasEmptyLineBefore) {
-        // Find the first non-empty line before this one.
-        let i = lineNumber - 1
-        while (--i >= 0) {
-          const lineBefore = textEditor.document.lineAt(i)
-          if (!lineBefore.isEmptyOrWhitespace) {
-            break
-          }
-          if (i === 0) {
-            return
-          }
+  if (isIndentable) {
+    const oldText = line.text
+    const hasEmptyLineBefore = textEditor.document.lineAt(
+      lineNumber - 1
+    ).isEmptyOrWhitespace
+
+    // If the line before this one is empty, we have to detect the
+    // indentation manually, because of this bug:
+    // https://github.com/microsoft/vscode/issues/121214
+    if (hasEmptyLineBefore) {
+      // Find the first non-empty line before this one.
+      let i = lineNumber - 1
+      while (--i >= 0) {
+        const lineBefore = textEditor.document.lineAt(i)
+        if (!lineBefore.isEmptyOrWhitespace) {
+          break
         }
-
-        // Update the editor selection to include this non-empty line and the reindented line.
-        textEditor.selection = new vscode.Selection(
-          i + 1,
-          0,
-          lineNumber,
-          line.text.length
-        )
-
-        while (++i <= lineNumber) {
-          redents.push({
-            textEditor,
-            lineNumber: i,
-            oldText: textEditor.document.lineAt(i).text,
-          })
+        if (i === 0) {
+          return
         }
-      } else {
+      }
+
+      // Update the editor selection to include this non-empty line and the reindented line.
+      textEditor.selection = new vscode.Selection(
+        i + 1,
+        0,
+        lineNumber,
+        line.text.length
+      )
+
+      while (++i <= lineNumber) {
         redents.push({
           textEditor,
-          lineNumber,
-          oldText,
+          lineNumber: i,
+          oldText: textEditor.document.lineAt(i).text,
         })
       }
+    } else {
+      redents.push({
+        textEditor,
+        lineNumber,
+        oldText,
+      })
+    }
 
-      await vscode.commands.executeCommand(
-        'editor.action.reindentselectedlines'
+    await vscode.commands.executeCommand('editor.action.reindentselectedlines')
+    // Extract the result of "Reindent selected lines" action.
+    const newText = textEditor.document.lineAt(lineNumber).text
+    if (oldText !== newText && /^\s*$/.test(newText)) {
+      output.appendLine(`Redenting line ${lineNumber}`)
+      output.appendLine(`${JSON.stringify({ newText, oldText })}`)
+      await vscode.commands.executeCommand('undo')
+      replaceLineIfOnlyWhitespace(textEditor, lineNumber, newText)
+    }
+
+    if (hasEmptyLineBefore) {
+      // Restore cursor to the expected line, but move it to the end
+      // of the new indentation.
+      textEditor.selection = new vscode.Selection(
+        lineNumber,
+        newText.length,
+        lineNumber,
+        newText.length
       )
-      // Extract the result of "Reindent selected lines" action.
-      const newText = textEditor.document.lineAt(lineNumber).text
-      if ((changed = oldText !== newText)) {
-        output.appendLine(`Redenting line ${lineNumber}`)
-        output.appendLine(`${JSON.stringify({ newText, oldText })}`)
-        await vscode.commands.executeCommand('undo')
-        replaceLineIfOnlyWhitespace(textEditor, lineNumber, newText)
-      }
-
-      if (hasEmptyLineBefore) {
-        // Restore cursor to the expected line, but move it to the end
-        // of the new indentation.
-        textEditor.selection = new vscode.Selection(
-          lineNumber,
-          newText.length,
-          lineNumber,
-          newText.length
-        )
-      }
     }
   }
 
-  if (!changed) {
-    const { fileName } = textEditor.document
-    if (fileName && textEditor.document.isDirty) {
-      clearTimeout(formatTimeout!)
-      formatTimeout = setTimeout(async () => {
-        output.appendLine('Formatting: ' + fileName)
-        await vscode.commands.executeCommand('editor.action.formatDocument')
+  clearTimeout(formatTimeout!)
+  if (
+    fileName &&
+    !isNodeModules &&
+    textEditor.document.isDirty &&
+    !line.isEmptyOrWhitespace
+  ) {
+    formatTimeout = setTimeout(async () => {
+      const { document, selections } = textEditor
+      const line = document.lineAt(selections[0].start.line)
+      if (
+        !document.isDirty ||
+        selections.length !== 1 ||
+        !selections[0].isEmpty ||
+        line.isEmptyOrWhitespace
+      ) {
+        output.appendLine(`Skip formatting: ` + fileName)
+        return
+      }
 
-        // Load file from disk to get the latest version.
-        const savedText = await readFile(fileName, 'utf8')
-        if (savedText === textEditor.document.getText()) {
-          // If the file hasn't changed, save it.
-          await textEditor.document.save()
-        }
-      }, 3000)
-    }
+      // Load file from disk to get the latest version.
+      const savedText = await readFile(fileName, 'utf8')
+      const unformattedText = textEditor.document.getText()
+
+      output.appendLine('Formatting: ' + fileName)
+      await vscode.commands.executeCommand('editor.action.formatDocument')
+
+      const formattedText = textEditor.document.getText()
+      if (savedText === formattedText) {
+        // If the file hasn't changed, save it.
+        await textEditor.document.save()
+      } else if (unformattedText !== formattedText) {
+        await vscode.commands.executeCommand('undo')
+      }
+    }, 3000)
   }
 }
 
