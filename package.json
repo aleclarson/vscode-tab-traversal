@@ -34,12 +34,17 @@
       {
         "key": "tab",
         "command": "jumpForward",
-        "when": "editorTextFocus && !(inSnippetMode && hasNextTabstop) && !(inlineSuggestionHasIndentationLessThanTabSize && inlineSuggestionVisible && !editorTabMovesFocus) && !(suggestWidgetHasFocusedSuggestion && suggestWidgetVisible && textInputFocus)"
+        "when": "editorTextFocus && !inSnippetMode && !suggestWidgetVisible || editorTextFocus && inSnippetMode && !hasNextTabstop || editorTextFocus && suggestWidgetVisible && !suggestWidgetHasFocusedSuggestion"
+      },
+      {
+        "key": "tab",
+        "command": "editor.action.inlineSuggest.commit",
+        "when": "inlineSuggestionHasIndentationLessThanTabSize && inlineSuggestionVisible && !editorTabMovesFocus"
       },
       {
         "key": "shift+tab",
         "command": "jumpBackward",
-        "when": "editorTextFocus && !(inSnippetMode && hasPrevTabstop)"
+        "when": "editorTextFocus && !inSnippetMode || editorTextFocus && inSnippetMode && !hasPrevTabstop"
       }
     ]
   },
