@@ -59,8 +59,13 @@ export function activate(context: vscode.ExtensionContext) {
       .then(() => {
         const newText = editor.document.lineAt(from.line).text
         if (newText === oldText) {
-          output.appendLine('Indent command did nothing. Jumping forward.')
-          return jump()
+          if (from.character === newText.length) {
+            output.appendLine('Indent command did nothing. Jumping forward.')
+            return jump()
+          }
+          output.appendLine(
+            'Indent command did nothing. Jumping to end of line.'
+          )
         }
         const cursor = [from.line, newText.length] as const
         editor.selection = new vscode.Selection(...cursor, ...cursor)
