@@ -50,7 +50,12 @@ export function activate(context: vscode.ExtensionContext) {
 
     return vscode.commands
       .executeCommand('lineBreakInsert')
-      .then(() => vscode.commands.executeCommand('editor.action.deleteLines'))
+      .then(() =>
+        editor.edit(
+          edit => edit.delete(new vscode.Range(from.line, 0, from.line + 1, 0)),
+          { undoStopBefore: false, undoStopAfter: false }
+        )
+      )
       .then(() => {
         const newText = editor.document.lineAt(from.line).text
         if (newText === oldText) {
